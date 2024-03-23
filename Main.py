@@ -44,8 +44,7 @@ def f2load(video_title=None, thumbnail_url=None, download_options=None):
     thumbnail = Label(f2, image=img, height=200, width=400)
     thumbnail.image = img
     thumbnail.pack()
-
-
+#-----------------------------------------------------
 def download(link):
     try:
         yt = YouTube(link)
@@ -55,18 +54,25 @@ def download(link):
 
         title = yt.title
         thumbnail = yt.thumbnail_url
-        f2load(title, thumbnail)
+        streams = yt.streams
+        res_names = set()
+        for stream in streams:
+            if stream.resolution:
+                res_names.add(stream.resolution)
+        res_values = list()
+        for res in res_names:
+            res_values.append(int(res.split('p')[0]))
+        f2load(title, thumbnail,sorted(res_values))
 
 
     except:  # put warning message
         invalid.place(x=70, y=235)
-
-
+#-----------------------------------------------------
 def click(event=None):
     link = entry.get()
     download(link)
     # entry.delete(0, END)
-
+#-----------------------------------------------------
 
 
 
