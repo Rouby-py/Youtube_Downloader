@@ -1,13 +1,14 @@
 from io import BytesIO
-import base64
 from pytube import *
 from requests import *
 from tkinter import *
 from PIL import ImageTk, Image
-import urllib.request
+from urllib.request import *
+from PIL import *
 import requests
-# Root config
 
+
+# Root config
 root = Tk()
 root.config(background='gray')
 root.title("Youtube Downloader")
@@ -21,25 +22,29 @@ f1 = Frame(root, bg='gray')
 f1.grid(row=0, column=0, sticky="news")
 
 
-
 # Download options page
 f2 = Frame(root, bg='gray')
 f2.grid(row=0, column=0, sticky="news")
 
 
-def f2load(video_title=None, thumbnail="https://openweathermap.org/themes/openweathermap/assets/img/logo_white_cropped.png", download_options=None):
+def f2load(video_title=None, thumbnail_url=None, download_options=None):
     # video title
     title = Label(f2, text=video_title, background='gray')
     title.pack()
 
     # showing thumbnail
-    u = requests.get(thumbnail)
-    image = ImageTk.PhotoImage(Image.open(BytesIO(u.content)))
-    l = Label(f2, image=image)
-    l.pack()
-    #canvas = Canvas(f2, width=400, height=400)
-    #canvas.pack()
-    #canvas.create_image(20, 20, anchor=NW,  image=img)
+    u = urlopen(thumbnail_url)
+    raw = u.read()
+    u.close()
+
+    img = ImageTk.PhotoImage(Image.open(BytesIO(raw)))
+    resized = img.resize((200, 400))
+    newimg = ImageTk.PhotoImage(resized)
+    #photo = ImageTk.PhotoImage(data=raw)
+
+    thumbnail = Label(f2, image=newimg, height=200, width=400)
+    thumbnail.image = newimg
+    thumbnail.pack()
 
 
 def download(link):
@@ -51,7 +56,7 @@ def download(link):
 
         title = yt.title
         thumbnail = yt.thumbnail_url
-        f2load(title)
+        f2load(title, thumbnail)
 
 
     except:  # put warning message
@@ -86,4 +91,3 @@ button.pack(side=BOTTOM, pady=100)
 
 f1.tkraise()
 f1.mainloop()
-#Rouby ma3ndhoo4 beta3
