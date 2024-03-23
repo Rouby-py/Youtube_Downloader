@@ -21,6 +21,7 @@ f1 = Frame(root, bg='gray')
 f1.grid(row=0, column=0, sticky="news")
 
 
+
 # Download options page
 f2 = Frame(root, bg='gray')
 f2.grid(row=0, column=0, sticky="news")
