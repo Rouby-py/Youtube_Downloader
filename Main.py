@@ -35,10 +35,8 @@ def get_path():
         invalidPath.place(x=70, y=235);
 
 def download(req_resolution):
+    global streams
     path=get_path()
-    print(path)
-    yt = YouTube(link)
-    streams = yt.streams
     for stream in streams:
         if stream.resolution == req_resolution:
             stream.download(path)
@@ -46,6 +44,7 @@ def download(req_resolution):
 
 def get_value():
     res = cb.get()
+    print(res)
     download(res)
 def f2load(video_title=None, thumbnail_url=None, download_options=None):
     # video title
@@ -73,6 +72,8 @@ def f2load(video_title=None, thumbnail_url=None, download_options=None):
 
 
 def get_data(link):
+    global yt
+    global streams
     try:
         yt = YouTube(link)
         yt.check_availability()
@@ -106,8 +107,8 @@ def click(event=None):
     get_data(link)
     # entry.delete(0, END)
 
-
-
+yt=None
+streams=None
 
 # Warning message for invalid links
 invalidLink = Label(f1, text="Please enter a valid link", font="Raavi", foreground="darkred", background='gray')
