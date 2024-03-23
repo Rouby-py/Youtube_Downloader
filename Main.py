@@ -15,6 +15,7 @@ root.geometry("900x400")
 root.resizable(width=False, height=False)
 root.columnconfigure(0, weight=1)
 
+
 # Default page
 f1 = Frame(root, bg='gray')
 f1.grid(row=0, column=0, sticky="news")
