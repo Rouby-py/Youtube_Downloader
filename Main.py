@@ -4,6 +4,7 @@ from requests import *
 from tkinter import *
 from PIL import ImageTk, Image
 from urllib.request import *
+from tkinter import ttk
 from PIL import *
 import requests
 
@@ -12,7 +13,7 @@ import requests
 root = Tk()
 root.config(background='gray')
 root.title("Youtube Downloader")
-root.geometry("900x400")
+root.geometry("900x500")
 root.resizable(width=False, height=False)
 root.columnconfigure(0, weight=1)
 
@@ -29,7 +30,7 @@ f2.grid(row=0, column=0, sticky="news")
 
 def f2load(video_title=None, thumbnail_url=None, download_options=None):
     # video title
-    title = Label(f2, text=video_title, background='gray')
+    title = ttk.Label(f2, text=video_title, background='gray', font=('Helvetica', 24, 'bold'))
     title.pack()
 
     # showing thumbnail
@@ -37,15 +38,20 @@ def f2load(video_title=None, thumbnail_url=None, download_options=None):
     raw = u.read()
     u.close()
     img = Image.open(BytesIO(raw))
-    img = img.resize((400, 200))
+    img = img.resize((500, 300))
     img = ImageTk.PhotoImage(img)
-    thumbnail = Label(f2, image=img, height=200, width=400)
+    thumbnail = Label(f2, image=img, height=300, width=500)
     thumbnail.image = img
     thumbnail.pack()
 
-    #drop down menu for quality selection 5555
+    # drop down menu for quality selection
 
-def download(link):
+    cb = ttk.Combobox(f2, values=download_options, width=40, state='readonly')
+    cb.pack()
+
+
+
+def get_data(link):
     try:
         yt = YouTube(link)
         yt.check_availability()
@@ -54,16 +60,20 @@ def download(link):
 
         title = yt.title
         thumbnail = yt.thumbnail_url
-        streams = yt.streams
-        res_names = set()
-        for stream in streams:
-            if stream.resolution:
-                res_names.add(stream.resolution)
-        res_values = list()
-        for res in res_names:
-            res_values.append(int(res.split('p')[0]))
-        f2load(title, thumbnail,sorted(res_values))
-
+        try:
+            streams = yt.streams
+            print(streams)
+            res_names = set()
+            for stream in streams:
+                if stream.resolution:
+                    res_names.add(stream.resolution)
+            res_values = list()
+            for res in res_names:
+                res_values.append(int(res.split('p')[0]))
+            f2load(title, thumbnail, sorted(res_values))
+        except Exception as e:
+            print(e)
+            f2load(title, thumbnail)
 
     except:  # put warning message
         invalid.place(x=70, y=235)
@@ -71,10 +81,8 @@ def download(link):
 
 def click(event=None):
     link = entry.get()
-    download(link)
+    get_data(link)
     # entry.delete(0, END)
-
-
 
 
 # Warning message for invalid links
