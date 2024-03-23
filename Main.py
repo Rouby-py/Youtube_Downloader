@@ -33,17 +33,16 @@ def f2load(video_title=None, thumbnail_url=None, download_options=None):
     title.pack()
 
     # showing thumbnail
+
     u = urlopen(thumbnail_url)
     raw = u.read()
     u.close()
+    img = Image.open(BytesIO(raw))
+    img = img.resize((400, 200))
+    img = ImageTk.PhotoImage(img)
 
-    img = ImageTk.PhotoImage(Image.open(BytesIO(raw)))
-    resized = img.resize((200, 400))
-    newimg = ImageTk.PhotoImage(resized)
-    #photo = ImageTk.PhotoImage(data=raw)
-
-    thumbnail = Label(f2, image=newimg, height=200, width=400)
-    thumbnail.image = newimg
+    thumbnail = Label(f2, image=img, height=200, width=400)
+    thumbnail.image = img
     thumbnail.pack()
 
 
