@@ -37,6 +37,8 @@ Progresspage.grid(row=0, column=0, sticky="news")
 def progress_page():
     Progresspage.tkraise()
     progressbar = CTkProgressBar(Progresspage)
+    progressbar.set(0.1)
+    progressbar.start()
     progressbar.pack(padx=20, pady=10)
 def get_path():
     destination_path = filedialog.askdirectory(title="Select Destination Folder")
@@ -80,7 +82,7 @@ def options_page(video_title=None, thumbnail_url=None, download_options=None):
     cb.place(relx=0.5, y=400, anchor=CENTER)
 
     #download button
-    download_button = CTkButton(Optionspage, text="Download", font=(Font, 25, "bold"),command=get_value, fg_color="#2ecc71", width=220, height=45, corner_radius=70)
+    download_button = CTkButton(Optionspage, text="Download", font=(Font, 25, "bold"), command=get_value, fg_color="#2ecc71", width=220, height=45, corner_radius=70)
     download_button.place(relx=0.5, y=450, anchor=CENTER)
 
 
