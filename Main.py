@@ -2,6 +2,7 @@ from io import BytesIO
 from pytube import *
 from requests import *
 from tkinter import *
+import customtkinter
 from customtkinter import *
 from tkinter import filedialog, ttk
 from PIL import ImageTk, Image
@@ -10,6 +11,7 @@ from PIL import *
 import requests
 Font = "Helvetica"
 
+customtkinter.set_appearance_mode("system")
 # Root config
 root = Tk()
 root.config(background='#2b2d31')
@@ -59,7 +61,7 @@ def get_value():
 def options_page(video_title=None, thumbnail_url=None, download_options=None):
     # video title
     title = CTkLabel(Optionspage, text=video_title, font=('Helvetica', 24, 'bold'))
-    title.place(relx=0.5,y=40,anchor=CENTER)
+    title.place(relx=0.5, y=40, anchor=CENTER)
 
     # showing thumbnail
     u = urlopen(thumbnail_url)
@@ -74,11 +76,12 @@ def options_page(video_title=None, thumbnail_url=None, download_options=None):
 
 
     # drop down menu for quality selection
-
     cb.configure(values = download_options)
-    cb.place(relx=0.5,y=400,anchor=CENTER)
-    download_button = CTkButton(Optionspage, text="Download", font=(Font, 25, "bold"),command = get_value, fg_color="#2ecc71",width=220,height=45, corner_radius=70)
-    download_button.place(relx=0.5,y=450,anchor=CENTER)
+    cb.place(relx=0.5, y=400, anchor=CENTER)
+
+    #download button
+    download_button = CTkButton(Optionspage, text="Download", font=(Font, 25, "bold"),command=get_value, fg_color="#2ecc71", width=220, height=45, corner_radius=70)
+    download_button.place(relx=0.5, y=450, anchor=CENTER)
 
 
 def get_data(link):
@@ -106,7 +109,7 @@ def get_data(link):
             options_page(title, thumbnail, res_values)
         except Exception as e:
             print(e)
-            # Optionspageload(title, thumbnail)
+            options_page(title, thumbnail)
 
     except:  # put warning message
         invalidLink.place(x=70, y=235)
@@ -125,20 +128,25 @@ invalidLink = Label(Homepage, text="Please enter a valid link", font=Font, foreg
 invalidPath = Label(Homepage, text="Please select a valid path", font=Font, foreground="darkred", background='#2b2d31')
 link = str()
 # Just a header
-empty=CTkLabel(Homepage, text="", font=(Font, 32, "bold"),)
+empty = CTkLabel(Homepage, text="", font=(Font, 32, "bold"))
 empty.pack(pady=500)
-label = CTkLabel(Homepage, text="YouTube Downloader", font=(Font, 32, "bold"),)
-label.place(relx=0.5,y=40,anchor=CENTER)
-cb = CTkComboBox(Optionspage, width=500, state='readonly')
+label = CTkLabel(Homepage, text="YouTube Downloader", font=(Font, 32, "bold"))
+label.place(relx=0.5, y=40, anchor=CENTER)
+
+#combobox for quality selection
+cb = CTkComboBox(Optionspage, width=500, state='readonly', dropdown_font=(Font, 32, "bold"), corner_radius=50, hover=True)
+cb.set('Quality')
+cb.configure(state='readonly', font=(Font, 25, 'bold'), dropdown_font=(Font, 20, 'bold'), justify='center')
+
 # Entry box for link
 entry = CTkEntry(Homepage, width=500, font=(Font, 20, "bold"))
-entry.place(relx=0.5,y=300,anchor=CENTER)
+entry.place(relx=0.5, y=300, anchor=CENTER)
 entry.bind("<Return>", click)
 
 
 # Submit button for entry box
-button = CTkButton(Homepage, text="Download", font=(Font, 25, "bold"), fg_color="#2ecc71", command=click,width=220,height=45,corner_radius=70)
-button.place(relx=0.5,y=350,anchor=CENTER)
+button = CTkButton(Homepage, text="Confirm", font=(Font, 25, "bold"), fg_color="#2ecc71", command=click, width=220, height=45, corner_radius=70)
+button.place(relx=0.5, rely=0.35, anchor=CENTER)
 
 Homepage.tkraise()
 Homepage.mainloop()
