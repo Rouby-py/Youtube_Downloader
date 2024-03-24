@@ -34,12 +34,17 @@ Optionspage.grid(row=0, column=0, sticky="news")
 Progresspage = Frame(root, bg='#2b2d31')
 Progresspage.grid(row=0, column=0, sticky="news")
 
+def progress_update(stream, chunk, bytes_remaining):
+    bytes_downloaded = stream.filesize - bytes_remaining
+    percentage_of_completion = (bytes_downloaded / stream.filesize) * 100
+    print(percentage_of_completion)
 def progress_page():
     Progresspage.tkraise()
     progressbar = CTkProgressBar(Progresspage)
-    progressbar.set(0.1)
-    progressbar.start()
+    progressbar.set(percentage_of_completion/100)
     progressbar.pack(padx=20, pady=10)
+    # while percentage_of_completion != 100:
+    #     progressbar.set(percentage_of_completion/100)
 def get_path():
     destination_path = filedialog.askdirectory(title="Select Destination Folder")
     if destination_path:
@@ -90,7 +95,7 @@ def get_data(link):
     global yt
     global streams
     try:
-        yt = YouTube(link)
+        yt = YouTube(link,on_progress_callback=progress_update)
         yt.check_availability()
         invalidLink.place_forget()  # remove warning message
         Optionspage.tkraise()
@@ -149,6 +154,7 @@ entry.bind("<Return>", click)
 # Submit button for entry box
 button = CTkButton(Homepage, text="Confirm", font=(Font, 25, "bold"), fg_color="#2ecc71", command=click, width=220, height=45, corner_radius=70)
 button.place(relx=0.5, rely=0.35, anchor=CENTER)
+percentage_of_completion=0
 
 Homepage.tkraise()
 Homepage.mainloop()
