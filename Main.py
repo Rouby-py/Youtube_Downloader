@@ -2,16 +2,17 @@ from io import BytesIO
 from pytube import *
 from requests import *
 from tkinter import *
+from customtkinter import *
 from tkinter import filedialog, ttk
 from PIL import ImageTk, Image
 from urllib.request import *
 from PIL import *
 import requests
-
+Font = "Helvetica"
 
 # Root config
 root = Tk()
-root.config(background='gray')
+root.config(background='#2b2d31')
 root.title("Youtube Downloader")
 root.geometry("900x500")
 root.resizable(width=False, height=False)
@@ -19,14 +20,22 @@ root.columnconfigure(0, weight=1)
 
 
 # Default page
-f1 = Frame(root, bg='gray')
-f1.grid(row=0, column=0, sticky="news")
+Homepage = Frame(root, bg='#2b2d31')
+Homepage.grid(row=0, column=0, sticky="news")
 
 
 # Download options page
-f2 = Frame(root, bg='gray')
-f2.grid(row=0, column=0, sticky="news")
+Optionspage = Frame(root, bg='#2b2d31')
+Optionspage.grid(row=0, column=0, sticky="news")
 
+# Download options page
+Progresspage = Frame(root, bg='#2b2d31')
+Progresspage.grid(row=0, column=0, sticky="news")
+
+def progress_page():
+    Progresspage.tkraise()
+    progressbar = CTkProgressBar(Progresspage)
+    progressbar.pack(padx=20, pady=10)
 def get_path():
     destination_path = filedialog.askdirectory(title="Select Destination Folder")
     if destination_path:
@@ -41,15 +50,16 @@ def download(req_resolution):
         if stream.resolution == req_resolution:
             stream.download(path)
             break
+    progress_page()
 
 def get_value():
     res = cb.get()
     print(res)
     download(res)
-def f2load(video_title=None, thumbnail_url=None, download_options=None):
+def options_page(video_title=None, thumbnail_url=None, download_options=None):
     # video title
-    title = ttk.Label(f2, text=video_title, background='gray', font=('Helvetica', 24, 'bold'))
-    title.pack()
+    title = CTkLabel(Optionspage, text=video_title, font=('Helvetica', 24, 'bold'))
+    title.place(relx=0.5,y=40,anchor=CENTER)
 
     # showing thumbnail
     u = urlopen(thumbnail_url)
@@ -58,17 +68,17 @@ def f2load(video_title=None, thumbnail_url=None, download_options=None):
     img = Image.open(BytesIO(raw))
     img = img.resize((500, 300))
     img = ImageTk.PhotoImage(img)
-    thumbnail = Label(f2, image=img, height=300, width=500)
+    thumbnail = Label(Optionspage, image=img, height=300, width=500)
     thumbnail.image = img
-    thumbnail.pack()
+    thumbnail.place(relx=0.5, y=220, anchor=CENTER)
 
 
     # drop down menu for quality selection
 
-    cb.config(values = download_options)
-    cb.pack()
-    download_button = Button(f2, text="Download", font=("Raavi", 26, "bold"), background="green", command = get_value)
-    download_button.pack()
+    cb.configure(values = download_options)
+    cb.place(relx=0.5,y=400,anchor=CENTER)
+    download_button = CTkButton(Optionspage, text="Download", font=(Font, 25, "bold"),command = get_value, fg_color="#2ecc71",width=220,height=45, corner_radius=70)
+    download_button.place(relx=0.5,y=450,anchor=CENTER)
 
 
 def get_data(link):
@@ -78,7 +88,7 @@ def get_data(link):
         yt = YouTube(link)
         yt.check_availability()
         invalidLink.place_forget()  # remove warning message
-        f2.tkraise()
+        Optionspage.tkraise()
 
         title = yt.title
         thumbnail = yt.thumbnail_url
@@ -93,10 +103,10 @@ def get_data(link):
                 res_values.append(int(res.split('p')[0]))
             res_values=sorted(res_values)
             res_values = [str(res) + 'p' for res in res_values]
-            f2load(title, thumbnail, res_values)
+            options_page(title, thumbnail, res_values)
         except Exception as e:
-            print("ERRORRR")
-            # f2load(title, thumbnail)
+            print(e)
+            # Optionspageload(title, thumbnail)
 
     except:  # put warning message
         invalidLink.place(x=70, y=235)
@@ -111,22 +121,24 @@ yt=None
 streams=None
 
 # Warning message for invalid links
-invalidLink = Label(f1, text="Please enter a valid link", font="Raavi", foreground="darkred", background='gray')
-invalidPath = Label(f1, text="Please select a valid path", font="Raavi", foreground="darkred", background='gray')
+invalidLink = Label(Homepage, text="Please enter a valid link", font=Font, foreground="darkred", background='#2b2d31')
+invalidPath = Label(Homepage, text="Please select a valid path", font=Font, foreground="darkred", background='#2b2d31')
 link = str()
 # Just a header
-label = Label(f1, text="Youtube Downloader", font=("Raavi", 26, "bold"), background="gray")
-label.pack(side=TOP, pady=60)
-cb = ttk.Combobox(f2, width=40, state='readonly')
-
+empty=CTkLabel(Homepage, text="", font=(Font, 32, "bold"),)
+empty.pack(pady=500)
+label = CTkLabel(Homepage, text="YouTube Downloader", font=(Font, 32, "bold"),)
+label.place(relx=0.5,y=40,anchor=CENTER)
+cb = CTkComboBox(Optionspage, width=500, state='readonly')
 # Entry box for link
-entry = Entry(f1, width=50, font=("Raavi", 20, "bold"))
-entry.place(relx=0.5, rely=0.5, anchor=CENTER)
+entry = CTkEntry(Homepage, width=500, font=(Font, 20, "bold"))
+entry.place(relx=0.5,y=300,anchor=CENTER)
 entry.bind("<Return>", click)
 
-# Submit button for entry box
-button = Button(f1, text="Download", font=("Raavi", 26, "bold"), background="green", command=click)
-button.pack(side=BOTTOM, pady=100)
 
-f1.tkraise()
-f1.mainloop()
+# Submit button for entry box
+button = CTkButton(Homepage, text="Download", font=(Font, 25, "bold"), fg_color="#2ecc71", command=click,width=220,height=45,corner_radius=70)
+button.place(relx=0.5,y=350,anchor=CENTER)
+
+Homepage.tkraise()
+Homepage.mainloop()
