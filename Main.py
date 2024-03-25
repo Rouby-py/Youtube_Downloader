@@ -9,9 +9,12 @@ from PIL import ImageTk, Image
 from urllib.request import *
 from PIL import *
 import requests
+import threading
+import time
 Font = "Helvetica"
 
 customtkinter.set_appearance_mode("system")
+
 # Root config
 root = Tk()
 root.config(background='#2b2d31')
@@ -34,32 +37,67 @@ Optionspage.grid(row=0, column=0, sticky="news")
 Progresspage = Frame(root, bg='#2b2d31')
 Progresspage.grid(row=0, column=0, sticky="news")
 
+percentage_of_completion = 0
+progressbar = CTkProgressBar(Progresspage)
+
+
+def schedule_check(t):
+    Progresspage.after(500, check_if_done, t)
+
+
+def check_if_done(t):
+    global percentage_of_completion
+    if not t.is_alive():
+        progressbar.destroy()
+    else:
+        Progresspage.update_idletasks()
+        progressbar.set(percentage_of_completion/100)
+        schedule_check(t)
+
+
 def progress_page():
+    global progressbar
     Progresspage.tkraise()
-    progressbar = CTkProgressBar(Progresspage)
-    progressbar.set(0.1)
-    progressbar.start()
     progressbar.pack(padx=20, pady=10)
+
+
+def progress_update(stream, chunk, bytes_remaining):
+    global percentage_of_completion
+    bytes_downloaded = stream.filesize - bytes_remaining
+    percentage_of_completion = (bytes_downloaded / stream.filesize) * 100
+    #print(percentage_of_completion)
+
+
 def get_path():
     destination_path = filedialog.askdirectory(title="Select Destination Folder")
     if destination_path:
         return destination_path
     else:
-        invalidPath.place(x=70, y=235);
+        invalidPath.place(x=70, y=235)
+
+
+def download_video(stream, path):
+    stream.download(path)
+
 
 def download(req_resolution):
     global streams
-    path=get_path()
+    path = get_path()
     for stream in streams:
+        print(stream)
         if stream.resolution == req_resolution:
-            stream.download(path)
+            download_video_thread = threading.Thread(target=download_video, args=(stream, path))
+            download_video_thread.start()
+            check_if_done(download_video_thread)
+            progress_page()
             break
-    progress_page()
 
 def get_value():
     res = cb.get()
-    print(res)
+    #print(res)
     download(res)
+
+
 def options_page(video_title=None, thumbnail_url=None, download_options=None):
     # video title
     title = CTkLabel(Optionspage, text=video_title, font=('Helvetica', 24, 'bold'))
@@ -90,7 +128,7 @@ def get_data(link):
     global yt
     global streams
     try:
-        yt = YouTube(link)
+        yt = YouTube(link, on_progress_callback=progress_update)
         yt.check_availability()
         invalidLink.place_forget()  # remove warning message
         Optionspage.tkraise()
