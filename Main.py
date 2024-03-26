@@ -13,7 +13,6 @@ from PIL import *
 import requests
 import threading
 import time
-from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 import ffmpeg
 import os
 import subprocess
@@ -44,6 +43,7 @@ Progresspage.grid(row=0, column=0, sticky="news")
 # Download Completed Page
 Completedpage = Frame(root, bg='#2b2d31')
 Completedpage.grid(row=0, column=0, sticky="news")
+# POPUP Window
 # Global initialization for download progress bar
 progressbar = CTkProgressBar(Progresspage,height=8,width=500)
 
@@ -52,10 +52,15 @@ yt = None
 video_streams = None
 audio_stream = None
 percentage_of_completion = 0
+title = CTkEntry(Optionspage, font=('Helvetica', 18, 'bold'), width=650)
 DownloadingPercent = CTkLabel(Progresspage, text=(f"{percentage_of_completion}%"), font=(Font, 25, "bold"))
 videoTitle = None
 videoThumbnail = None
 destination_path = None
+error = False
+illegalCharacters = ["/", ":", "*", "?", "<", ">", "|", '"']
+
+
 def reset():
     entry.delete(0,END)
     home_page()
@@ -75,6 +80,8 @@ def completed_page():
     thumbnail.place(relx=0.5, y=220, anchor=CENTER)
     resetButton.place(relx=0.3,y=420, anchor = CENTER)
     openFileButton.place(relx=0.7,y=420, anchor = CENTER)
+
+
 # Function to check download progress periodically
 def schedule_check(t):
     Progresspage.after(500, check_if_done, t)
@@ -110,20 +117,22 @@ def progress_update(stream, chunk, bytes_remaining):
     # print(percentage_of_completion)
 
 
+
 # Function to make user select the path for the download
 def get_path():
     global destination_path
     destination_path = filedialog.askdirectory(title="Select Destination Folder")
-    if destination_path:
-        return destination_path
-    else:
-        invalidPath.place(x=565, y=445)
     return destination_path
 
 
 # function that downloads the video in another thread
-def download_video(stream, path):
-    name = stream.title
+def fix_name(oldName):
+    newName = oldName
+    for char in illegalCharacters:
+        newName = newName.replace(char, " ")
+    return newName
+
+def download_video(stream, path, name):
     stream.download(path, filename="video.webm")
     audio_stream.download(path, filename="audio.mp4")
     video = ffmpeg.input(path+"/video.webm")
@@ -133,47 +142,79 @@ def download_video(stream, path):
         title = path+f"/{name}.mp4"
         os.remove(path+"/video.webm")
         os.remove(path+"/audio.mp4")
-        name = name.replace("/", " ")
-        name = name.replace(":", " ")
-        name = name.replace("*", " ")
-        name = name.replace("?", " ")
-        name = name.replace("<", " ")
-        name = name.replace(">", " ")
-        name = name.replace("|", " ")
-        name = name.replace('"', " ")
         os.rename(path+"/output.mp4", path+f"/{name}.mp4")
     except Exception as e:
         print(e)
 
 # Function to check correct resolution and get stream
-def find_stream(req_resolution):
+def find_stream(req_resolution, path, name):
     global video_streams
-    path = get_path()
     for stream in video_streams:
         if stream.resolution == req_resolution:
-            download_video_thread = threading.Thread(target=download_video, args=(stream, path))
+            download_video_thread = threading.Thread(target=download_video, args=(stream, path, name))
             download_video_thread.start()
             check_if_done(download_video_thread)
             progress_page()
             break
 
+#Function to check if there exists a file with this name in path
+def check_duplicate(name, path):    ##################  ROUBY'S JOB  ###########################
+    return 1
 
-# Function to pass quality choice to find_stream (triggered by button)
-def choose_resolution():
-    res = cb.get()
-    if res != "Quality":
-        find_stream(res)
-    else:
-        invalidRes.place(x=565, y=445)
 
+#PopUp Page function
+def popup_page():     #  Should be working, for some reason isn't. I'm going to bed.
+    # Popuppage = CTkToplevel(root)
+    # Popuppage.title="A file already exists with this name"
+    # Popuppage.geometry("400x150")
+    # Popuppage.resizable(False,False)
+    # lable = CTkLabel(Popuppage, text ="A file already exists with this name", font = (Font,20,'bold'))
+    # lable.place(relx=0.5,y=40,anchor=CENTER)
+    # def rename():
+    #     error = True
+    #     Popuppage.destroy()
+    # def replace():
+    #     error = False
+    #     Popuppage.destroy()
+    # renameButton = CTkButton(Popuppage, text="Rename", font=(Font, 22, "bold"), fg_color="#2ecc71", command=rename, width=140, height=45, corner_radius=70)
+    # replaceButton = CTkButton(Popuppage, text="Replace", font=(Font, 22, "bold"), fg_color="#2ecc71", command=replace, width=140, height=45, corner_radius=70)
+    # renameButton.place(relx=0.3,y=110,anchor = CENTER)
+    # replaceButton.place(relx=0.7,y=110, anchor= CENTER)
+def check_errors():
+    res=cb.get()
+    name=title.get()
+    invalidRes.place_forget()
+    invalidName.place_forget()
+    error = False
+    if res == "Quality":
+        invalidRes.place(x=710, y=385)
+        error = True
+    for char in illegalCharacters:
+        if name.find(char) != -1:
+            error = True
+            invalidName.place(x=725,y=290)
+            break
+    path = None
+    if not error:
+        path = get_path()
+    if not path:
+        error = True
+        invalidPath.place(x=565, y=445)
+        return
+    if check_duplicate(name, path):
+        error = True
+        popup_page()
+    if not error:
+        find_stream(res, path, name)
 
 # Function to load the quality selection page components
 def options_page(video_title=None, thumbnail_url=None, download_options=None):
     global videoTitle, videoThumbnail
-    videoTitle = video_title
-    title = CTkLabel(Optionspage, text=video_title, font=('Helvetica', 24, 'bold'))
-    title.place(relx=0.5, y=40, anchor=CENTER)
-
+    videoTitle = fix_name(video_title)
+    title.insert(0,videoTitle)
+    title.place(x=160, y=350, anchor = "w")
+    filename = CTkLabel(Optionspage,text="Name:",font=('Helvetica',24,'bold'))
+    filename.place(y=347,x=115,anchor =CENTER)
     # showing thumbnail
     u = urlopen(thumbnail_url)
     raw = u.read()
@@ -184,16 +225,16 @@ def options_page(video_title=None, thumbnail_url=None, download_options=None):
     img = ImageTk.PhotoImage(img)
     thumbnail = Label(Optionspage, image=img, height=300, width=533)
     thumbnail.image = img
-    thumbnail.place(relx=0.5, y=220, anchor=CENTER)
+    thumbnail.place(relx=0.5, y=170, anchor=CENTER)
 
     # drop down menu for quality selection
     cb.configure(values=download_options)
     cb.place(relx=0.5, y=400, anchor=CENTER)
 
     # download button to confirm download quality
-    download_button = CTkButton(Optionspage, text="Download", font=(Font, 25, "bold"), command=choose_resolution, fg_color="#2ecc71", width=220, height=45, corner_radius=70)
+    download_button = CTkButton(Optionspage, text="Download", font=(Font, 25, "bold"), command=check_errors, fg_color="#2ecc71", width=220, height=45, corner_radius=70)
     download_button.place(relx=0.5, y=450, anchor=CENTER)
-    backButton.place(x=100,y=90,anchor=CENTER)
+    backButton.place(x=100,y=50,anchor=CENTER)
 
 # Function to filter all streams and pass them to quality selection page
 def get_data(link):
@@ -252,6 +293,7 @@ def watermark():
 invalidLink = CTkLabel(Homepage, text="Please enter a valid link...", font=(Font,16), text_color="#f23f42")
 invalidPath = CTkLabel(Optionspage, text="Please select a valid path...", font=(Font,16), text_color="#f23f42")
 invalidRes  = CTkLabel(Optionspage, text="Please select a resolution...", font=(Font,16), text_color="#f23f42")
+invalidName = CTkLabel(Optionspage, text="File name can't contain \n\ / : * ? \" < > |", font=(Font,16), text_color="#f23f42")
 link = str()
 
 # Just a header
