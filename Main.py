@@ -13,6 +13,10 @@ from PIL import *
 import requests
 import threading
 import time
+from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
+import ffmpeg
+import os
+import subprocess
 
 Font = "Helvetica"
 customtkinter.set_appearance_mode("system")
@@ -45,7 +49,8 @@ progressbar = CTkProgressBar(Progresspage,height=8,width=500)
 
 # Initializing global variables
 yt = None
-streams = None
+video_streams = None
+audio_stream = None
 percentage_of_completion = 0
 DownloadingPercent = CTkLabel(Progresspage, text=(f"{percentage_of_completion}%"), font=(Font, 25, "bold"))
 videoTitle = None
@@ -118,21 +123,39 @@ def get_path():
 
 # function that downloads the video in another thread
 def download_video(stream, path):
-    stream.download(path)
-
+    name = stream.title
+    stream.download(path, filename="video.webm")
+    audio_stream.download(path, filename="audio.mp4")
+    video = ffmpeg.input(path+"/video.webm")
+    audio = ffmpeg.input(path+"/audio.mp4")
+    try:
+        subprocess.run(f"ffmpeg -i {path}/video.webm -i {path}/audio.mp4 -c copy {path}/output.mp4 -hide_banner -loglevel error -y")
+        title = path+f"/{name}.mp4"
+        os.remove(path+"/video.webm")
+        os.remove(path+"/audio.mp4")
+        name = name.replace("/", " ")
+        name = name.replace(":", " ")
+        name = name.replace("*", " ")
+        name = name.replace("?", " ")
+        name = name.replace("<", " ")
+        name = name.replace(">", " ")
+        name = name.replace("|", " ")
+        name = name.replace('"', " ")
+        os.rename(path+"/output.mp4", path+f"/{name}.mp4")
+    except Exception as e:
+        print(e)
 
 # Function to check correct resolution and get stream
 def find_stream(req_resolution):
-    global streams
+    global video_streams
     path = get_path()
-    if path:
-        for stream in streams:
-            if stream.resolution == req_resolution:
-                download_video_thread = threading.Thread(target=download_video, args=(stream, path))
-                download_video_thread.start()
-                check_if_done(download_video_thread)
-                progress_page()
-                break
+    for stream in video_streams:
+        if stream.resolution == req_resolution:
+            download_video_thread = threading.Thread(target=download_video, args=(stream, path))
+            download_video_thread.start()
+            check_if_done(download_video_thread)
+            progress_page()
+            break
 
 
 # Function to pass quality choice to find_stream (triggered by button)
@@ -175,7 +198,8 @@ def options_page(video_title=None, thumbnail_url=None, download_options=None):
 # Function to filter all streams and pass them to quality selection page
 def get_data(link):
     global yt
-    global streams
+    global video_streams
+    global audio_stream
     try:
         yt = YouTube(link, on_progress_callback=progress_update)
         yt.check_availability()
@@ -185,16 +209,11 @@ def get_data(link):
         title = yt.title
         thumbnail = yt.thumbnail_url
         try:
-            streams = yt.streams
-            res_names = set()
-            for stream in streams:
-                if stream.resolution:
-                    res_names.add(stream.resolution)
-            res_values = list()
-            for res in res_names:
-                res_values.append(int(res.split('p')[0]))
-            res_values = sorted(res_values)
-            res_values = [str(res) + 'p' for res in res_values]
+            video_streams = yt.streams.filter(file_extension="webm", type="video")
+            audio_stream = yt.streams.filter(file_extension="mp4", type="audio").last()
+            res_values = []
+            for stream in video_streams:
+                res_values.append(stream.resolution)
             options_page(title, thumbnail, res_values)
         except Exception as e:
             print(e)
@@ -234,6 +253,7 @@ invalidLink = CTkLabel(Homepage, text="Please enter a valid link...", font=(Font
 invalidPath = CTkLabel(Optionspage, text="Please select a valid path...", font=(Font,16), text_color="#f23f42")
 invalidRes  = CTkLabel(Optionspage, text="Please select a resolution...", font=(Font,16), text_color="#f23f42")
 link = str()
+
 # Just a header
 empty = CTkLabel(Homepage, text="", font=(Font, 32, "bold"))
 empty.pack(pady=500)
@@ -246,6 +266,7 @@ cb.configure(state='readonly', font=(Font, 25, 'bold'), dropdown_font=(Font, 20,
 
 # Entry box for link
 entry = CTkEntry(Homepage, width=500, font=(Font, 20, "bold"))
+entry.place(relx=0.5, y=250, anchor=CENTER)
 
 # Binding enter button to entry box
 entry.bind("<Return>", click)
@@ -260,4 +281,5 @@ watermark()
 home_page()
 
 # Run main loop
+Homepage.tkraise()
 Homepage.mainloop()
