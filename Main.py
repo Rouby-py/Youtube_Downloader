@@ -45,35 +45,52 @@ yt = None
 video_streams = None
 audio_stream = None
 percentage_of_completion = 0
+remaining_text ="Calculating remaining amount..."
 title = CTkEntry(Optionspage, font=('Helvetica', 18, 'bold'), width=650)
 DownloadingPercent = CTkLabel(Progresspage, text=(f"{percentage_of_completion}%"), font=(Font, 25, "bold"))
+RemainingAmount = CTkLabel(Progresspage, text=remaining_text, font=(Font, 22, "bold"))
+finalVideoName = CTkLabel(Completedpage, font=('Helvetica', 18, 'bold'))
+stream_sizes =[]
 videoTitle = None
 videoThumbnail = None
 destination_path = None
 error = False
+isPaused = False
 illegalCharacters = ["/", ":", "*", "?", "<", ">", "|", '"']
-
-
+units = ["","Kbs","Mbs","Gbs","Tbs"]
+def format(size, unit):
+    if size >= 1024:
+        return format(size / 1024, unit+1)
+    return f"{size:.1f}{units[unit]}"
 def reset():
     entry.delete(0, END)
     title.delete(0, END)
     cb.set("Quality")
     progressbar.set(0)
     percentage_of_completion = 0
+    isPaused = False
+    DownloadingPercent.configure(text="0%")
     invalidPath.place_forget()
     invalidName.place_forget()
     invalidRes.place_forget()
     invalidLink.place_forget()
+    progressbar.place_forget()
+    DownloadingPercent.place_forget()
     home_page()
+
 def open_location():
     global destination_path
     os.startfile(destination_path)
+
 def completed_page():
     global videoTitle, videoThumbnail
     Completedpage.tkraise()
-    title = CTkLabel(Completedpage, text=videoTitle+".mp4", font=('Helvetica', 20, 'bold'))
     downloadedLabel = CTkLabel(Completedpage, text="The download is complete!", font=('Helvetica', 32, 'bold'))
-    title.place(relx=0.5, y=360, anchor=CENTER)
+    videoTitle+=".mp4"
+    fontsize=int(min(24,1500/len(videoTitle)))
+    finalVideoName.configure(font=(Font,fontsize,'bold'))
+    finalVideoName.configure(text=videoTitle)
+    finalVideoName.place(relx=0.5, y=360, anchor=CENTER)
     downloadedLabel.place(relx=0.5, y=50, anchor=CENTER)
     thumbnail = CTkLabel(Completedpage, image=videoThumbnail, height=240, width=426, text='')
     thumbnail.image = videoThumbnail
@@ -81,11 +98,9 @@ def completed_page():
     resetButton.place(relx=0.3,y=420, anchor=CENTER)
     openFileButton.place(relx=0.7, y=420, anchor=CENTER)
 
-
 # Function to check download progress periodically
 def schedule_check(t):
     Progresspage.after(500, check_if_done, t)
-
 
 # Function to check if the download process is done and update the progress bar
 def check_if_done(t):
@@ -96,8 +111,26 @@ def check_if_done(t):
         Progresspage.update_idletasks()
         progressbar.set(percentage_of_completion/100)
         DownloadingPercent.configure (text=f"{round(percentage_of_completion, 1)}%")
+        RemainingAmount.configure (text=remaining_text)
         schedule_check(t)
 
+################vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv#################### ROUBY'S JOB
+def cancel():
+    return
+def pause():
+    return
+def resume():
+    return
+################^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^################### ROUBY'S JOB
+def toggle():
+    global isPaused
+    isPaused = 1 - isPaused
+    if isPaused:
+        toggleButton.configure(text = "Resume",fg_color="#2ecc71",hover_color="#16a855")
+        pause()
+    else:
+        toggleButton.configure(text = "Pause",fg_color="#565b5e",hover_color="#3c4042")
+        resume()
 
 # Function to instantiate progress bar
 def progress_page():
@@ -106,24 +139,25 @@ def progress_page():
     DownloadingLable = CTkLabel(Progresspage, text="Video is downloading...", font=(Font, 32, "bold"))
     DownloadingPercent.place(relx=0.5, y=220,anchor=CENTER)
     DownloadingLable.place(relx=0.5, y=50, anchor=CENTER)
+    progressbar.set(0)
     progressbar.place(relx=0.5, y=250, anchor=CENTER)
-
+    RemainingAmount.place(relx=0.5, y=275, anchor=CENTER)
+    toggleButton.place(relx=0.3, y=400, anchor=CENTER)
+    cancelButton.place(relx=0.7, y=400, anchor=CENTER)
 
 # Function to calculate percentage of download
 def progress_update(stream, chunk, bytes_remaining):
-    global percentage_of_completion
+    global percentage_of_completion, remaining_text
     bytes_downloaded = stream.filesize - bytes_remaining
+    remaining_text = f"{format(bytes_remaining,0)} remaining out of {format(stream.filesize,0)}"
     percentage_of_completion = (bytes_downloaded / stream.filesize) * 100
     # print(percentage_of_completion)
-
-
 
 # Function to make user select the path for the download
 def get_path():
     global destination_path
     destination_path = filedialog.askdirectory(title="Select Destination Folder")
     return destination_path
-
 
 # function that downloads the video in another thread
 def fix_name(oldName):
@@ -166,8 +200,6 @@ def check_duplicate(filename, path):    ##################  ROUBY'S JOB  #######
     full_path = path + f"/{filename}.mp4"
     return os.path.exists(full_path)
 
-
-
 #PopUp Page function
 def popup_page(res, name, path):#  Should be working, for some reason isn't. I'm going to bed.
     global error
@@ -193,6 +225,7 @@ def popup_page(res, name, path):#  Should be working, for some reason isn't. I'm
 def check_errors():
     global error
     res=cb.get()
+    res = res.split(" ")[0]
     name=title.get()
     invalidRes.place_forget()
     invalidName.place_forget()
@@ -205,16 +238,15 @@ def check_errors():
             error = True
             invalidName.place(x=725,y=290)
             break
-    path = None
-    if not error:
-        path = get_path()
+    if error:
+        return
+    path = get_path()
     if not path:
-        error = True
         invalidPath.place(x=565, y=445)
         return
     if check_duplicate(name, path):
-        error = True
         popup_page(res, name, path)
+        return
     if not error:
         find_stream(res, name, path)
 
@@ -237,7 +269,8 @@ def options_page(video_title=None, thumbnail_url=None, download_options=None):
     thumbnail.place(relx=0.5, y=170, anchor=CENTER)
 
     # drop down menu for quality selection
-    cb.configure(values=download_options)
+    values = [download_options[i] +"  -  "+ stream_sizes[i] for i in range(len(stream_sizes))]
+    cb.configure(values=values)
     cb.place(relx=0.5, y=400, anchor=CENTER)
 
     # download button to confirm download quality
@@ -264,6 +297,7 @@ def get_data(link):
             res_values = []
             for stream in video_streams:
                 res_values.append(stream.resolution)
+                stream_sizes.append(format(stream.filesize,0))
             options_page(title, thumbnail, res_values)
         except Exception as e:
             print(e)
@@ -271,7 +305,6 @@ def get_data(link):
 
     except Exception as e:  # put warning message
         invalidLink.place(x=520, y=251)
-
 
 # Function to pass link to get_data function (triggered by button)
 def click(event=None):
@@ -285,6 +318,7 @@ def home_page():
     tube.place(y=91, anchor=CENTER, x=372)
     entry.place(relx=0.5, y=300, anchor=CENTER)
     button.place(relx=0.5, rely=0.35, anchor=CENTER)
+
 def watermark():
     HPWatermark = CTkLabel(Homepage, text="Made by Bigo and Rouby", font=(Font,14))
     OPWatermark = CTkLabel(Optionspage, text="Made by Bigo and Rouby", font=(Font,14))
@@ -334,6 +368,8 @@ button = CTkButton(Homepage, text="Confirm", font=(Font, 25, "bold"), fg_color="
 resetButton = CTkButton(Completedpage, text="Download New Video", font=(Font, 25, "bold"), fg_color="#2ecc71", command=reset, width=220, height=45, corner_radius=70)
 openFileButton = CTkButton(Completedpage, text="Open File Location", font=(Font, 25, "bold"), fg_color="#2ecc71", command=open_location, width=220, height=45, corner_radius=70)
 backButton = CTkButton(Optionspage, text="<< Back", font=(Font, 22, "bold"), fg_color="#2b2d31",border_color="#565b5e", border_width=2, command=reset, width=140, height=40, corner_radius=70,hover_color="#565b5e")
+toggleButton = CTkButton(Progresspage, text="Pause", font=(Font, 25, "bold"), fg_color="#565b5e", command=toggle, width=220, height=45, corner_radius=70,hover_color="#3d4042")
+cancelButton = CTkButton(Progresspage, text="Cancel", font=(Font, 25, "bold"), fg_color="#b32227", command=cancel, width=220, height=45, corner_radius=70,hover_color="#87171b")
 watermark()
 home_page()
 
