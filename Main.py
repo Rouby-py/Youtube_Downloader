@@ -1,27 +1,19 @@
 from io import BytesIO
 from pytube import *
-from requests import *
-from tkinter import *
-import customtkinter
 from customtkinter import *
-from tkinter import filedialog, ttk
-from PIL import ImageTk, Image
+from PIL import Image
 from urllib.request import *
-from subprocess import *
-from os import *
-from PIL import *
-import requests
 import threading
-import time
 import ffmpeg
 import os
 import subprocess
 
 Font = "Helvetica"
-customtkinter.set_appearance_mode("system")
+set_appearance_mode("system")
 
 # Root config
-root = Tk()
+root = CTk()
+root.iconbitmap("icon.ico")
 root.config(background='#2b2d31')
 root.title("Youtube Downloader")
 root.geometry("900x500")
@@ -29,19 +21,20 @@ root.resizable(width=False, height=False)
 root.columnconfigure(0, weight=1)
 
 
+
 # Default page
-Homepage = Frame(root, bg='#2b2d31')
+Homepage = CTkFrame(root, fg_color='#2b2d31')
 Homepage.grid(row=0, column=0, sticky="news")
 
 # Download options page
-Optionspage = Frame(root, bg='#2b2d31')
+Optionspage = CTkFrame(root, fg_color='#2b2d31')
 Optionspage.grid(row=0, column=0, sticky="news")
 
 # Download Progress page
-Progresspage = Frame(root, bg='#2b2d31')
+Progresspage = CTkFrame(root, fg_color='#2b2d31')
 Progresspage.grid(row=0, column=0, sticky="news")
 # Download Completed Page
-Completedpage = Frame(root, bg='#2b2d31')
+Completedpage = CTkFrame(root, fg_color='#2b2d31')
 Completedpage.grid(row=0, column=0, sticky="news")
 # POPUP Window
 # Global initialization for download progress bar
@@ -78,12 +71,11 @@ def open_location():
 def completed_page():
     global videoTitle, videoThumbnail
     Completedpage.tkraise()
-    title = CTkLabel(Completedpage, text=videoTitle, font=('Helvetica', 20, 'bold'))
+    title = CTkLabel(Completedpage, text=videoTitle+".mp4", font=('Helvetica', 20, 'bold'))
     downloadedLabel = CTkLabel(Completedpage, text="The download is complete!", font=('Helvetica', 32, 'bold'))
     title.place(relx=0.5, y=360, anchor=CENTER)
     downloadedLabel.place(relx=0.5, y=50, anchor=CENTER)
-    videoThumbnail = ImageTk.PhotoImage(videoThumbnail)
-    thumbnail = Label(Completedpage, image=videoThumbnail, height=240, width=426)
+    thumbnail = CTkLabel(Completedpage, image=videoThumbnail, height=240, width=426, text='')
     thumbnail.image = videoThumbnail
     thumbnail.place(relx=0.5, y=220, anchor=CENTER)
     resetButton.place(relx=0.3,y=420, anchor=CENTER)
@@ -103,7 +95,7 @@ def check_if_done(t):
     else:
         Progresspage.update_idletasks()
         progressbar.set(percentage_of_completion/100)
-        DownloadingPercent.configure (text=f"{round(percentage_of_completion,1)}%")
+        DownloadingPercent.configure (text=f"{round(percentage_of_completion, 1)}%")
         schedule_check(t)
 
 
@@ -141,6 +133,8 @@ def fix_name(oldName):
     return newName
 
 def download_video(stream, name, path):
+    global videoTitle
+    videoTitle = name
     if check_duplicate(name,path):
         os.remove(path+f"/{name}.mp4")
     stream.download(filename="video.webm")
@@ -237,11 +231,9 @@ def options_page(video_title=None, thumbnail_url=None, download_options=None):
     raw = u.read()
     u.close()
     img = Image.open(BytesIO(raw))
-    img = img.resize((533, 300))
-    videoThumbnail = img.resize((426, 240))
-    img = ImageTk.PhotoImage(img)
-    thumbnail = Label(Optionspage, image=img, height=300, width=533)
-    thumbnail.image = img
+    videoThumbnail = CTkImage(img, size=(426, 240))
+    img = CTkImage(img, size=(533, 300))
+    thumbnail = CTkLabel(Optionspage, image=img, height=300, width=533, text='')
     thumbnail.place(relx=0.5, y=170, anchor=CENTER)
 
     # drop down menu for quality selection
@@ -346,5 +338,7 @@ watermark()
 home_page()
 
 # Run main loop
+root.mainloop()
 Homepage.tkraise()
 Homepage.mainloop()
+
