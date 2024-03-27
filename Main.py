@@ -65,10 +65,16 @@ def reset():
     entry.delete(0, END)
     title.delete(0, END)
     cb.set("Quality")
+    progressbar.set(0)
+    percentage_of_completion = 0
+    invalidPath.place_forget()
+    invalidName.place_forget()
+    invalidRes.place_forget()
+    invalidLink.place_forget()
     home_page()
 def open_location():
-    directory = path.dirname(destination_path)
-    Popen(['explorer', directory])
+    global destination_path
+    os.startfile(destination_path)
 def completed_page():
     global videoTitle, videoThumbnail
     Completedpage.tkraise()
@@ -134,18 +140,18 @@ def fix_name(oldName):
         newName = newName.replace(char, " ")
     return newName
 
-def download_video(stream, path, name):
+def download_video(stream, name, path):
     if check_duplicate(name,path):
         os.remove(path+f"/{name}.mp4")
-    stream.download(path, filename="video.webm")
-    audio_stream.download(path, filename="audio.mp4")
-    video = ffmpeg.input(path+"/video.webm")
-    audio = ffmpeg.input(path+"/audio.mp4")
+    stream.download(filename="video.webm")
+    audio_stream.download(filename="audio.mp4")
+    video = ffmpeg.input("video.webm")
+    audio = ffmpeg.input("audio.mp4")
     try:
-        subprocess.run(f"ffmpeg -i {path}/video.webm -i {path}/audio.mp4 -c copy {path}/output.mp4 -hide_banner -loglevel error -y")
+        subprocess.run(f"ffmpeg -i video.webm -i audio.mp4 -c copy {path}/output.mp4 -hide_banner -loglevel error -y")
         title = path+f"/{name}.mp4"
-        os.remove(path+"/video.webm")
-        os.remove(path+"/audio.mp4")
+        os.remove("video.webm")
+        os.remove("audio.mp4")
         os.rename(path+"/output.mp4", path+f"/{name}.mp4")
     except Exception as e:
         print(e)
@@ -155,7 +161,7 @@ def find_stream(req_resolution, name, path):
     global video_streams
     for stream in video_streams:
         if stream.resolution == req_resolution:
-            download_video_thread = threading.Thread(target=download_video, args=(stream, path, name))
+            download_video_thread = threading.Thread(target=download_video, args=(stream, name, path))
             download_video_thread.start()
             check_if_done(download_video_thread)
             progress_page()
@@ -164,7 +170,6 @@ def find_stream(req_resolution, name, path):
 #Function to check if there exists a file with this name in path
 def check_duplicate(filename, path):    ##################  ROUBY'S JOB  ###########################
     full_path = path + f"/{filename}.mp4"
-    print(os.path.exists(full_path))
     return os.path.exists(full_path)
 
 
@@ -217,7 +222,7 @@ def check_errors():
         error = True
         popup_page(res, name, path)
     if not error:
-        find_stream(res, path, name)
+        find_stream(res, name, path)
 
 # Function to load the quality selection page components
 def options_page(video_title=None, thumbnail_url=None, download_options=None):
@@ -273,7 +278,7 @@ def get_data(link):
             options_page(title, thumbnail)
 
     except Exception as e:  # put warning message
-        invalidLink.place(x=200, y=260)
+        invalidLink.place(x=520, y=251)
 
 
 # Function to pass link to get_data function (triggered by button)
@@ -299,6 +304,7 @@ def watermark():
     CPWatermark.place(x=10,y=470)
 
 # Main Code -----------
+
 
 # Warning message for invalid links
 invalidLink = CTkLabel(Homepage, text="Please enter a valid link...", font=(Font,16), text_color="#f23f42")
