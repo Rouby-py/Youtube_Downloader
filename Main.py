@@ -62,7 +62,9 @@ illegalCharacters = ["/", ":", "*", "?", "<", ">", "|", '"']
 
 
 def reset():
-    entry.delete(0,END)
+    entry.delete(0, END)
+    title.delete(0, END)
+    cb.set("Quality")
     home_page()
 def open_location():
     directory = path.dirname(destination_path)
@@ -78,8 +80,8 @@ def completed_page():
     thumbnail = Label(Completedpage, image=videoThumbnail, height=240, width=426)
     thumbnail.image = videoThumbnail
     thumbnail.place(relx=0.5, y=220, anchor=CENTER)
-    resetButton.place(relx=0.3,y=420, anchor = CENTER)
-    openFileButton.place(relx=0.7,y=420, anchor = CENTER)
+    resetButton.place(relx=0.3,y=420, anchor=CENTER)
+    openFileButton.place(relx=0.7, y=420, anchor=CENTER)
 
 
 # Function to check download progress periodically
@@ -104,9 +106,9 @@ def progress_page():
     global progressbar
     Progresspage.tkraise()
     DownloadingLable = CTkLabel(Progresspage, text="Video is downloading...", font=(Font, 32, "bold"))
-    DownloadingPercent.place(relx=0.5,y=220,anchor=CENTER)
+    DownloadingPercent.place(relx=0.5, y=220,anchor=CENTER)
     DownloadingLable.place(relx=0.5, y=50, anchor=CENTER)
-    progressbar.place(relx=0.5, y=250,anchor=CENTER)
+    progressbar.place(relx=0.5, y=250, anchor=CENTER)
 
 
 # Function to calculate percentage of download
@@ -133,6 +135,8 @@ def fix_name(oldName):
     return newName
 
 def download_video(stream, path, name):
+    if check_duplicate(name,path):
+        os.remove(path+f"/{name}.mp4")
     stream.download(path, filename="video.webm")
     audio_stream.download(path, filename="audio.mp4")
     video = ffmpeg.input(path+"/video.webm")
@@ -147,7 +151,7 @@ def download_video(stream, path, name):
         print(e)
 
 # Function to check correct resolution and get stream
-def find_stream(req_resolution, path, name):
+def find_stream(req_resolution, name, path):
     global video_streams
     for stream in video_streams:
         if stream.resolution == req_resolution:
@@ -158,29 +162,37 @@ def find_stream(req_resolution, path, name):
             break
 
 #Function to check if there exists a file with this name in path
-def check_duplicate(name, path):    ##################  ROUBY'S JOB  ###########################
-    return 1
+def check_duplicate(filename, path):    ##################  ROUBY'S JOB  ###########################
+    full_path = path + f"/{filename}.mp4"
+    print(os.path.exists(full_path))
+    return os.path.exists(full_path)
+
 
 
 #PopUp Page function
-def popup_page():     #  Should be working, for some reason isn't. I'm going to bed.
-    # Popuppage = CTkToplevel(root)
-    # Popuppage.title="A file already exists with this name"
-    # Popuppage.geometry("400x150")
-    # Popuppage.resizable(False,False)
-    # lable = CTkLabel(Popuppage, text ="A file already exists with this name", font = (Font,20,'bold'))
-    # lable.place(relx=0.5,y=40,anchor=CENTER)
-    # def rename():
-    #     error = True
-    #     Popuppage.destroy()
-    # def replace():
-    #     error = False
-    #     Popuppage.destroy()
-    # renameButton = CTkButton(Popuppage, text="Rename", font=(Font, 22, "bold"), fg_color="#2ecc71", command=rename, width=140, height=45, corner_radius=70)
-    # replaceButton = CTkButton(Popuppage, text="Replace", font=(Font, 22, "bold"), fg_color="#2ecc71", command=replace, width=140, height=45, corner_radius=70)
-    # renameButton.place(relx=0.3,y=110,anchor = CENTER)
-    # replaceButton.place(relx=0.7,y=110, anchor= CENTER)
+def popup_page(res, name, path):#  Should be working, for some reason isn't. I'm going to bed.
+    global error
+    Popuppage = CTkToplevel(root)
+    root.bell()
+    Popuppage.after(100, Popuppage.lift)
+    Popuppage.title = "A file already exists with this name"
+    Popuppage.geometry("400x150")
+    Popuppage.resizable(False,False)
+    label = CTkLabel(Popuppage, text ="A file already exists with this name", font = (Font,20,'bold'))
+    label.place(relx=0.5, y=40, anchor=CENTER)
+    def rename():
+        error = True
+        Popuppage.destroy()
+    def replace():
+        error = False
+        Popuppage.destroy()
+        find_stream(res, name, path)
+    renameButton = CTkButton(Popuppage, text="Rename", font=(Font, 22, "bold"), fg_color="#2ecc71", command=rename, width=140, height=45, corner_radius=70)
+    replaceButton = CTkButton(Popuppage, text="Replace", font=(Font, 22, "bold"), fg_color="#2ecc71", command=replace, width=140, height=45, corner_radius=70)
+    renameButton.place(relx=0.3,y=110,anchor = CENTER)
+    replaceButton.place(relx=0.7,y=110, anchor= CENTER)
 def check_errors():
+    global error
     res=cb.get()
     name=title.get()
     invalidRes.place_forget()
@@ -203,7 +215,7 @@ def check_errors():
         return
     if check_duplicate(name, path):
         error = True
-        popup_page()
+        popup_page(res, name, path)
     if not error:
         find_stream(res, path, name)
 
@@ -269,19 +281,18 @@ def click(event=None):
     global link
     link = entry.get()
     get_data(link)
-    # entry.delete(0, END)
 
 def home_page():
     Homepage.tkraise()
-    label.place(relx=0.5, y=50, anchor=CENTER)
-    tube.place(y=51,anchor=CENTER,x=383)
+    label.place(relx=0.5, y=90, anchor=CENTER)
+    tube.place(y=91, anchor=CENTER, x=372)
     entry.place(relx=0.5, y=300, anchor=CENTER)
     button.place(relx=0.5, rely=0.35, anchor=CENTER)
 def watermark():
-    HPWatermark  = CTkLabel(Homepage, text="Made by Rouby and Bigo", font=(Font,14))
-    OPWatermark  = CTkLabel(Optionspage, text="Made by Rouby and Bigo", font=(Font,14))
-    PPWatermark  = CTkLabel(Progresspage, text="Made by Rouby and Bigo", font=(Font,14))
-    CPWatermark  = CTkLabel(Completedpage, text="Made by Rouby and Bigo", font=(Font,14))
+    HPWatermark = CTkLabel(Homepage, text="Made by Bigo and Rouby", font=(Font,14))
+    OPWatermark = CTkLabel(Optionspage, text="Made by Bigo and Rouby", font=(Font,14))
+    PPWatermark = CTkLabel(Progresspage, text="Made by Bigo and Rouby", font=(Font,14))
+    CPWatermark = CTkLabel(Completedpage, text="Made by Bigo and Rouby", font=(Font,14))
     HPWatermark.place(x=10,y=470)
     OPWatermark.place(x=10,y=470)
     PPWatermark.place(x=10,y=470)
@@ -293,14 +304,20 @@ def watermark():
 invalidLink = CTkLabel(Homepage, text="Please enter a valid link...", font=(Font,16), text_color="#f23f42")
 invalidPath = CTkLabel(Optionspage, text="Please select a valid path...", font=(Font,16), text_color="#f23f42")
 invalidRes  = CTkLabel(Optionspage, text="Please select a resolution...", font=(Font,16), text_color="#f23f42")
-invalidName = CTkLabel(Optionspage, text="File name can't contain \n\ / : * ? \" < > |", font=(Font,16), text_color="#f23f42")
+invalidName = CTkLabel(Optionspage, text="File name can't contain \n"+r"\ / : * ? \" < > |", font=(Font,16), text_color="#f23f42")
 link = str()
+
+# message header
+please_insert = CTkLabel(Homepage, text="Insert video link...", font=(Font, 24))
+please_insert.place(x=200, y=250)
+
 
 # Just a header
 empty = CTkLabel(Homepage, text="", font=(Font, 32, "bold"))
 empty.pack(pady=500)
-label = CTkLabel(Homepage, text="YouTube Downloader", font=(Font, 32, "bold"))
-tube = CTkLabel(Homepage, text="Tube", font=(Font, 32, "bold"), text_color="#fd011b")
+label = CTkLabel(Homepage, text="YouTube Downloader", font=(Font, 38, "bold"))
+tube = CTkLabel(Homepage, text="Tube", font=(Font, 38, "bold"), text_color="#fd011b")
+
 # combobox for quality selection
 cb = CTkComboBox(Optionspage, width=500, state='readonly', dropdown_font=(Font, 32, "bold"), corner_radius=50, hover=True)
 cb.set('Quality')
