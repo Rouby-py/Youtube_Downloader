@@ -1,5 +1,6 @@
 from io import BytesIO
 from pytube import *
+from pytube import request
 from customtkinter import *
 from PIL import Image
 from urllib.request import *
@@ -7,7 +8,7 @@ import threading
 import ffmpeg
 import os
 import subprocess
-
+import time
 Font = "Helvetica"
 set_appearance_mode("system")
 
@@ -57,7 +58,7 @@ destination_path = None
 error = False
 isPaused = False
 illegalCharacters = ["/", ":", "*", "?", "<", ">", "|", '"']
-units = ["","Kbs","Mbs","Gbs","Tbs"]
+units = ["", "Kbs", "Mbs", "Gbs", "Tbs"]
 def format(size, unit):
     if size >= 1024:
         return format(size / 1024, unit+1)
@@ -88,7 +89,7 @@ def completed_page():
     downloadedLabel = CTkLabel(Completedpage, text="The download is complete!", font=('Helvetica', 32, 'bold'))
     videoTitle+=".mp4"
     fontsize=int(min(24,1500/len(videoTitle)))
-    finalVideoName.configure(font=(Font,fontsize,'bold'))
+    finalVideoName.configure(font=(Font, fontsize, 'bold'))
     finalVideoName.configure(text=videoTitle)
     finalVideoName.place(relx=0.5, y=360, anchor=CENTER)
     downloadedLabel.place(relx=0.5, y=50, anchor=CENTER)
@@ -98,31 +99,19 @@ def completed_page():
     resetButton.place(relx=0.3,y=420, anchor=CENTER)
     openFileButton.place(relx=0.7, y=420, anchor=CENTER)
 
-# Function to check download progress periodically
-def schedule_check(t):
-    Progresspage.after(500, check_if_done, t)
-
-# Function to check if the download process is done and update the progress bar
-def check_if_done(t):
-    global percentage_of_completion
-    if not t.is_alive():
-        completed_page()
-    else:
-        Progresspage.update_idletasks()
-        progressbar.set(percentage_of_completion/100)
-        DownloadingPercent.configure (text=f"{round(percentage_of_completion, 1)}%")
-        RemainingAmount.configure (text=remaining_text)
-        schedule_check(t)
 
 ################vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv#################### ROUBY'S JOB
 def cancel():
-    return
+    global is_cancelled
+    is_cancelled = True
 def pause():
-    return
+    global is_paused
+    is_paused = True
 def resume():
-    return
+    global is_paused
+    is_paused = False
 ################^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^################### ROUBY'S JOB
-def toggle():
+def toggle_pause_button():
     global isPaused
     isPaused = 1 - isPaused
     if isPaused:
@@ -146,12 +135,17 @@ def progress_page():
     cancelButton.place(relx=0.7, y=400, anchor=CENTER)
 
 # Function to calculate percentage of download
-def progress_update(stream, chunk, bytes_remaining):
+def progress_update(size, bytes_remaining):
     global percentage_of_completion, remaining_text
-    bytes_downloaded = stream.filesize - bytes_remaining
-    remaining_text = f"{format(bytes_remaining,0)} remaining out of {format(stream.filesize,0)}"
-    percentage_of_completion = (bytes_downloaded / stream.filesize) * 100
-    # print(percentage_of_completion)
+    bytes_downloaded = size - bytes_remaining
+    print(bytes_remaining)
+    remaining_text = f"{format(bytes_remaining, 0)} remaining out of {format(size, 0)}"
+    percentage_of_completion = (bytes_downloaded / size) * 100
+    DownloadingPercent.configure(text=f"{round(percentage_of_completion, 1)}%")
+    Progresspage.update_idletasks()
+    progressbar.set(percentage_of_completion / 100)
+    RemainingAmount.configure(text=remaining_text)
+    #print(percentage_of_completion)
 
 # Function to make user select the path for the download
 def get_path():
@@ -166,33 +160,66 @@ def fix_name(oldName):
         newName = newName.replace(char, " ")
     return newName
 
+
+is_paused = is_cancelled = False
 def download_video(stream, name, path):
-    global videoTitle
+    global videoTitle, is_paused, is_cancelled
+    progress_page()
     videoTitle = name
-    if check_duplicate(name,path):
-        os.remove(path+f"/{name}.mp4")
-    stream.download(filename="video.webm")
-    audio_stream.download(filename="audio.mp4")
-    video = ffmpeg.input("video.webm")
-    audio = ffmpeg.input("audio.mp4")
-    try:
-        subprocess.run(f"ffmpeg -i video.webm -i audio.mp4 -c copy {path}/output.mp4 -hide_banner -loglevel error -y")
-        title = path+f"/{name}.mp4"
+    with open('video.webm', 'wb') as videoFile, open('audio.mp4', 'wb') as audioFile:
+        is_paused = is_cancelled = False
+        videoStream = request.stream(stream.url)
+        audioStream = request.stream(audio_stream.url)
+        size = stream.filesize+audio_stream.filesize
+        downloaded = 0
+        flag = -1
+        while True:
+            if is_cancelled:  # bigo's job
+                DownloadingPercent.configure(text='Download Cancelled')
+                reset()
+                break
+            elif is_paused:  # bigo's job
+                if flag == -1:
+                    DownloadingPercent.configure(text='Download Paused')
+                    flag = 1
+                time.sleep(0.5)
+            else:
+                flag = -1
+                videoChunk = next(videoStream, None)
+                audioChunk = next(audioStream, None)
+                if videoChunk or audioChunk:
+                    if videoChunk:
+                        downloaded += len(videoChunk)
+                        videoFile.write(videoChunk)
+                    if audioChunk:
+                        downloaded += len(audioChunk)
+                        audioFile.write(audioChunk)
+                else:
+                    break
+                progress_update(size, size-downloaded)
+    if is_cancelled:
         os.remove("video.webm")
         os.remove("audio.mp4")
-        os.rename(path+"/output.mp4", path+f"/{name}.mp4")
-    except Exception as e:
-        print(e)
+    else:
+        try:
+            if check_duplicate(name, path):
+                os.remove(path+f'/{name}.mp4')
+            subprocess.run(f"ffmpeg -i video.webm -i audio.mp4 -c copy {path}/output.mp4 -hide_banner -loglevel error -y")
+            title = path+f"/{name}.mp4"
+            os.remove("video.webm")
+            os.remove("audio.mp4")
+            os.rename(path+"/output.mp4", title)
+            completed_page()
+        except Exception as e:
+            print(e)
 
 # Function to check correct resolution and get stream
 def find_stream(req_resolution, name, path):
-    global video_streams
+    global video_streams, download_video_thread
     for stream in video_streams:
         if stream.resolution == req_resolution:
             download_video_thread = threading.Thread(target=download_video, args=(stream, name, path))
             download_video_thread.start()
-            check_if_done(download_video_thread)
-            progress_page()
             break
 
 #Function to check if there exists a file with this name in path
@@ -200,8 +227,9 @@ def check_duplicate(filename, path):    ##################  ROUBY'S JOB  #######
     full_path = path + f"/{filename}.mp4"
     return os.path.exists(full_path)
 
-#PopUp Page function
-def popup_page(res, name, path):#  Should be working, for some reason isn't. I'm going to bed.
+
+# PopUp Page function
+def popup_page(res, name, path):# Should be working, for some reason isn't. I'm going to bed.
     global error
     Popuppage = CTkToplevel(root)
     root.bell()
@@ -254,6 +282,7 @@ def check_errors():
 def options_page(video_title=None, thumbnail_url=None, download_options=None):
     global videoTitle, videoThumbnail
     videoTitle = fix_name(video_title)
+    title.delete(0, END)
     title.insert(0,videoTitle)
     title.place(x=160, y=350, anchor = "w")
     filename = CTkLabel(Optionspage,text="Name:",font=('Helvetica',24,'bold'))
@@ -284,7 +313,7 @@ def get_data(link):
     global video_streams
     global audio_stream
     try:
-        yt = YouTube(link, on_progress_callback=progress_update)
+        yt = YouTube(link)
         yt.check_availability()
         invalidLink.place_forget()  # remove warning message
         Optionspage.tkraise()
@@ -297,7 +326,7 @@ def get_data(link):
             res_values = []
             for stream in video_streams:
                 res_values.append(stream.resolution)
-                stream_sizes.append(format(stream.filesize,0))
+                stream_sizes.append(format(stream.filesize+audio_stream.filesize, 0))
             options_page(title, thumbnail, res_values)
         except Exception as e:
             print(e)
@@ -331,6 +360,8 @@ def watermark():
 
 # Main Code -----------
 
+
+download_video_thread = threading.Thread(target=download_video)
 
 # Warning message for invalid links
 invalidLink = CTkLabel(Homepage, text="Please enter a valid link...", font=(Font,16), text_color="#f23f42")
@@ -368,7 +399,7 @@ button = CTkButton(Homepage, text="Confirm", font=(Font, 25, "bold"), fg_color="
 resetButton = CTkButton(Completedpage, text="Download New Video", font=(Font, 25, "bold"), fg_color="#2ecc71", command=reset, width=220, height=45, corner_radius=70)
 openFileButton = CTkButton(Completedpage, text="Open File Location", font=(Font, 25, "bold"), fg_color="#2ecc71", command=open_location, width=220, height=45, corner_radius=70)
 backButton = CTkButton(Optionspage, text="<< Back", font=(Font, 22, "bold"), fg_color="#2b2d31",border_color="#565b5e", border_width=2, command=reset, width=140, height=40, corner_radius=70,hover_color="#565b5e")
-toggleButton = CTkButton(Progresspage, text="Pause", font=(Font, 25, "bold"), fg_color="#565b5e", command=toggle, width=220, height=45, corner_radius=70,hover_color="#3d4042")
+toggleButton = CTkButton(Progresspage, text="Pause", font=(Font, 25, "bold"), fg_color="#565b5e", command=toggle_pause_button, width=220, height=45, corner_radius=70,hover_color="#3d4042")
 cancelButton = CTkButton(Progresspage, text="Cancel", font=(Font, 25, "bold"), fg_color="#b32227", command=cancel, width=220, height=45, corner_radius=70,hover_color="#87171b")
 watermark()
 home_page()
