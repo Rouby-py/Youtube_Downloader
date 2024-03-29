@@ -74,7 +74,7 @@ def reset():
     FetchingLabel.place_forget()
     video_streams = None
     audio_stream = None
-    button.configure(state='normal', fg_color="#2ecc71")
+    button.configure(state  ='normal', fg_color="#2ecc71")
     stream_sizes.clear()
     entry.delete(0, END)
     title.delete(0, END)
@@ -88,6 +88,7 @@ def reset():
     invalidName.place_forget()
     invalidRes.place_forget()
     invalidLink.place_forget()
+    invalidAgeRestricted.place_forget()
     progressbar.place_forget()
     DownloadingPercent.place_forget()
     home_page()
