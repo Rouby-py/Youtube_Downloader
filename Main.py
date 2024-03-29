@@ -5,7 +5,6 @@ from customtkinter import *
 from PIL import Image
 from urllib.request import *
 import threading
-import ffmpeg
 import os
 import subprocess
 import time
@@ -42,6 +41,7 @@ progressbar = CTkProgressBar(Progresspage, height=8, width=500, progress_color="
 
 # Initializing global variables
 yt = None
+allStreams = []
 video_streams = None
 audio_stream = None
 percentage_of_completion = 0
@@ -69,9 +69,10 @@ def format(size, unit):
 
 
 def reset():
-    global videoTitle, videoThumbnail, destination_path
+    global videoTitle, videoThumbnail, destination_path, allStreams
     RemainingAmount.configure(text='Calculating remaining amount...')
     FetchingLabel.place_forget()
+    allStreams=[]
     video_streams = None
     audio_stream = None
     button.configure(state  ='normal', fg_color="#2ecc71")
@@ -164,14 +165,12 @@ def progress_page():
 def progress_update(size, bytes_remaining):
     global percentage_of_completion, remaining_text
     bytes_downloaded = size - bytes_remaining
-    print(bytes_remaining)
     remaining_text = f"{format(bytes_remaining, 0)} remaining out of {format(size, 0)}"
     percentage_of_completion = (bytes_downloaded / size) * 100
     DownloadingPercent.configure(text=f"{round(percentage_of_completion, 1)}%")
     Progresspage.update_idletasks()
     progressbar.set(percentage_of_completion / 100)
     RemainingAmount.configure(text=remaining_text)
-    # print(percentage_of_completion)
 
 
 # Function to make user select the path for the download
@@ -244,7 +243,7 @@ def download_video(stream, name, path):
 # Function to check correct resolution and get stream
 def find_stream(req_resolution, name, path):
     global video_streams, download_video_thread
-    for stream in video_streams:
+    for stream in allStreams:
         if stream.resolution == req_resolution:
             download_video_thread = threading.Thread(target=download_video, args=(stream, name, path))
             download_video_thread.start()
@@ -352,6 +351,7 @@ def get_data(link):
     global yt
     global video_streams
     global audio_stream
+    global allStreams
     try:
         invalidLink.place_forget()  # remove warning message
         yt = YouTube(link)
@@ -359,10 +359,20 @@ def get_data(link):
         title = yt.title
         thumbnail = yt.thumbnail_url
         try:
-            video_streams = yt.streams.filter(file_extension="webm", type="video")
+            map1 = {}
+            video_streams = yt.streams.filter(type="video", file_extension="webm", progressive=False)
+            vidStreamsMp4 = yt.streams.filter(type='video', adaptive=True, file_extension='mp4')
+            for stream in video_streams:
+                if stream.resolution not in map1:
+                    map1[stream.resolution] = 1
+                    allStreams.append(stream)
+            for stream in vidStreamsMp4:
+                if stream.resolution not in map1:
+                    map1[stream.resolution] = 2
+                    allStreams.append(stream)
             audio_stream = yt.streams.filter(file_extension="mp4", type="audio").last()
             res_values = []
-            for stream in video_streams:
+            for stream in allStreams:
                 res_values.append(stream.resolution)
                 stream_sizes.append(format(stream.filesize + audio_stream.filesize, 0))
             options_page(title, thumbnail, res_values)
@@ -462,6 +472,9 @@ watermark()
 home_page()
 
 # Run main loop
-root.mainloop()
-Homepage.tkraise()
-Homepage.mainloop()
+try:
+    root.mainloop()
+    Homepage.tkraise()
+    Homepage.mainloop()
+except:
+    pass
