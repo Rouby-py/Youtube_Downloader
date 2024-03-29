@@ -39,7 +39,7 @@ Completedpage = CTkFrame(root, fg_color='#2b2d31')
 Completedpage.grid(row=0, column=0, sticky="news")
 # POPUP Window
 # Global initialization for download progress bar
-progressbar = CTkProgressBar(Progresspage,height=8,width=500)
+progressbar = CTkProgressBar(Progresspage,height=8,width=500,progress_color="#2ecc71")
 
 # Initializing global variables
 yt = None
@@ -51,6 +51,8 @@ title = CTkEntry(Optionspage, font=('Helvetica', 18, 'bold'), width=650)
 DownloadingPercent = CTkLabel(Progresspage, text=(f"{percentage_of_completion}%"), font=(Font, 25, "bold"))
 RemainingAmount = CTkLabel(Progresspage, text=remaining_text, font=(Font, 22, "bold"))
 finalVideoName = CTkLabel(Completedpage, font=('Helvetica', 18, 'bold'))
+DownloadingLabel = CTkLabel(Progresspage, text="Video is downloading...", font=(Font, 32, "bold"))
+FetchingLabel = CTkLabel(Homepage,text="Fetching Data...", font=(Font, 22, "bold"))
 stream_sizes =[]
 videoTitle = None
 videoThumbnail = None
@@ -64,6 +66,11 @@ def format(size, unit):
         return format(size / 1024, unit+1)
     return f"{size:.1f}{units[unit]}"
 def reset():
+    FetchingLabel.place_forget()
+    video_streams = None
+    audio_stream = None
+    button.configure(state='normal', fg_color="#2ecc71")
+    stream_sizes.clear()
     entry.delete(0, END)
     title.delete(0, END)
     cb.set("Quality")
@@ -71,6 +78,7 @@ def reset():
     percentage_of_completion = 0
     isPaused = False
     DownloadingPercent.configure(text="0%")
+    DownloadingLabel.configure(text="Video is downloading...")
     invalidPath.place_forget()
     invalidName.place_forget()
     invalidRes.place_forget()
@@ -100,17 +108,20 @@ def completed_page():
     openFileButton.place(relx=0.7, y=420, anchor=CENTER)
 
 
-################vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv#################### ROUBY'S JOB
 def cancel():
     global is_cancelled
+    reset()
     is_cancelled = True
 def pause():
     global is_paused
     is_paused = True
+    DownloadingLabel.configure(text="Download Paused")
+    progressbar.configure(progress_color='#6f767a')
 def resume():
     global is_paused
     is_paused = False
-################^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^################### ROUBY'S JOB
+    DownloadingLabel.configure(text="Video is downloading...")
+    progressbar.configure(progress_color="#2ecc71")
 def toggle_pause_button():
     global isPaused
     isPaused = 1 - isPaused
@@ -125,9 +136,8 @@ def toggle_pause_button():
 def progress_page():
     global progressbar
     Progresspage.tkraise()
-    DownloadingLable = CTkLabel(Progresspage, text="Video is downloading...", font=(Font, 32, "bold"))
     DownloadingPercent.place(relx=0.5, y=220,anchor=CENTER)
-    DownloadingLable.place(relx=0.5, y=50, anchor=CENTER)
+    DownloadingLabel.place(relx=0.5, y=50, anchor=CENTER)
     progressbar.set(0)
     progressbar.place(relx=0.5, y=250, anchor=CENTER)
     RemainingAmount.place(relx=0.5, y=275, anchor=CENTER)
@@ -161,6 +171,7 @@ def fix_name(oldName):
     return newName
 
 
+
 is_paused = is_cancelled = False
 def download_video(stream, name, path):
     global videoTitle, is_paused, is_cancelled
@@ -174,16 +185,11 @@ def download_video(stream, name, path):
         downloaded = 0
         flag = -1
         while True:
-            if is_cancelled:  # bigo's job
-                DownloadingPercent.configure(text='Download Cancelled')
-                reset()
+            if is_cancelled:
                 break
-            elif is_paused:  # bigo's job
-                if flag == -1:
-                    DownloadingPercent.configure(text='Download Paused')
-                    flag = 1
+            if is_paused:
                 time.sleep(0.5)
-            else:
+            elif not is_paused:
                 flag = -1
                 videoChunk = next(videoStream, None)
                 audioChunk = next(audioStream, None)
@@ -196,7 +202,8 @@ def download_video(stream, name, path):
                         audioFile.write(audioChunk)
                 else:
                     break
-                progress_update(size, size-downloaded)
+                if not is_paused:
+                    progress_update(size, size-downloaded)
     if is_cancelled:
         os.remove("video.webm")
         os.remove("audio.mp4")
@@ -286,7 +293,6 @@ def options_page(video_title=None, thumbnail_url=None, download_options=None):
     title.insert(0,videoTitle)
     title.place(x=160, y=350, anchor = "w")
     filename = CTkLabel(Optionspage,text="Name:",font=('Helvetica',24,'bold'))
-    filename.place(y=347,x=115,anchor =CENTER)
     # showing thumbnail
     u = urlopen(thumbnail_url)
     raw = u.read()
@@ -295,17 +301,20 @@ def options_page(video_title=None, thumbnail_url=None, download_options=None):
     videoThumbnail = CTkImage(img, size=(426, 240))
     img = CTkImage(img, size=(533, 300))
     thumbnail = CTkLabel(Optionspage, image=img, height=300, width=533, text='')
-    thumbnail.place(relx=0.5, y=170, anchor=CENTER)
 
     # drop down menu for quality selection
     values = [download_options[i] +"  -  "+ stream_sizes[i] for i in range(len(stream_sizes))]
     cb.configure(values=values)
-    cb.place(relx=0.5, y=400, anchor=CENTER)
 
     # download button to confirm download quality
     download_button = CTkButton(Optionspage, text="Download", font=(Font, 25, "bold"), command=check_errors, fg_color="#2ecc71", width=220, height=45, corner_radius=70)
     download_button.place(relx=0.5, y=450, anchor=CENTER)
     backButton.place(x=100,y=50,anchor=CENTER)
+    cb.place(relx=0.5, y=400, anchor=CENTER)
+    thumbnail.place(relx=0.5, y=170, anchor=CENTER)
+    filename.place(y=347,x=115,anchor =CENTER)
+    Optionspage.tkraise()
+
 
 # Function to filter all streams and pass them to quality selection page
 def get_data(link):
@@ -316,8 +325,6 @@ def get_data(link):
         yt = YouTube(link)
         yt.check_availability()
         invalidLink.place_forget()  # remove warning message
-        Optionspage.tkraise()
-
         title = yt.title
         thumbnail = yt.thumbnail_url
         try:
@@ -329,17 +336,23 @@ def get_data(link):
                 stream_sizes.append(format(stream.filesize+audio_stream.filesize, 0))
             options_page(title, thumbnail, res_values)
         except Exception as e:
-            print(e)
-            options_page(title, thumbnail)
+            e = str(e)
+            e = e.split(" ")
+            if e[3] == "restricted,":
+                reset()
+                invalidAgeRestricted.place(x=430, y=251)
 
-    except Exception as e:  # put warning message
+    except Exception as e:  # put warning message\
         invalidLink.place(x=520, y=251)
 
 # Function to pass link to get_data function (triggered by button)
 def click(event=None):
     global link
     link = entry.get()
-    get_data(link)
+    button.configure(state='disabled',fg_color="#565b5e")
+    getDataThread = threading.Thread(target=get_data,args=(link,))
+    getDataThread.start()
+    FetchingLabel.place(relx=0.5,rely=0.4,anchor=CENTER)
 
 def home_page():
     Homepage.tkraise()
@@ -365,6 +378,7 @@ download_video_thread = threading.Thread(target=download_video)
 
 # Warning message for invalid links
 invalidLink = CTkLabel(Homepage, text="Please enter a valid link...", font=(Font,16), text_color="#f23f42")
+invalidAgeRestricted = CTkLabel(Homepage, text="Can't download age restricted videos...", font=(Font,16), text_color="#f23f42")
 invalidPath = CTkLabel(Optionspage, text="Please select a valid path...", font=(Font,16), text_color="#f23f42")
 invalidRes  = CTkLabel(Optionspage, text="Please select a resolution...", font=(Font,16), text_color="#f23f42")
 invalidName = CTkLabel(Optionspage, text="File name can't contain \n"+r"\ / : * ? \" < > |", font=(Font,16), text_color="#f23f42")
