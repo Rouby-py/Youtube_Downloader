@@ -79,6 +79,7 @@ def reset():
     stream_sizes.clear()
     entry.delete(0, END)
     title.delete(0, END)
+
     cb.set("Quality")
     progressbar.set(0)
     percentage_of_completion = 0
@@ -229,8 +230,7 @@ def download_video(stream, name, path):
         try:
             if check_duplicate(name, path):
                 os.remove(path + f'/{name}.mp4')
-            subprocess.run(
-                f"ffmpeg -i video.webm -i audio.mp4 -c copy {path}/output.mp4 -hide_banner -loglevel error -y")
+            subprocess.run(f"ffmpeg.exe -i video.webm -i audio.mp4 -c copy {path}/output.mp4 -hide_banner -loglevel error -y")
             title = path + f"/{name}.mp4"
             os.remove("video.webm")
             os.remove("audio.mp4")
